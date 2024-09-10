@@ -12,23 +12,17 @@ contract FundEthTest is Test {
         HelperConfig helperConfig = new HelperConfig();
         address priceFeedAddress = helperConfig.activeNetworkConfig();
         fundeth = new FundEth(priceFeedAddress);
-
-        // fundeth_deploy = new FundEthDeploy();
-        // fundeth = fundeth_deploy.run();
     }
 
-    function fundMultipleAccounts() internal returns (address, address) {
+    function fundContract() internal returns (address) {
         address test_random = makeAddr("Random");
-        vm.deal(test_random, 0.45 ether);
-        address test_random1 = makeAddr("Random1");
-        vm.deal(test_random1, 0.9 ether);
-        vm.prank(test_random);
-        fundeth.fund{value: 0.23 ether}();
-        vm.startPrank(test_random1);
+        vm.deal(test_random, 2.45 ether);
+        vm.startPrank(test_random);
         fundeth.fund{value: 0.33 ether}();
-        fundeth.fund{value: 0.23 ether}();
+        fundeth.fund{value: 0.12 ether}();
+        fundeth.fund{value: 0.16 ether}();
         vm.stopPrank();
-        return (test_random, test_random1);
+        return test_random;
     }
 
     function testMinAmountToBeDeposited() public view {
@@ -56,13 +50,7 @@ contract FundEthTest is Test {
 
     function testFundingSuccess() public {
         uint256 initial_balance = fundeth.checkBalance();
-        address test_random = makeAddr("Random");
-        vm.deal(test_random, 3 ether);
-        vm.startPrank(test_random);
-        fundeth.fund{value: 0.33 ether}();
-        fundeth.fund{value: 0.12 ether}();
-        fundeth.fund{value: 0.16 ether}();
-        vm.stopPrank();
+        fundContract();
         assertEq(
             fundeth.checkBalance(),
             initial_balance + (0.33 ether + 0.12 ether + 0.16 ether)
@@ -70,7 +58,7 @@ contract FundEthTest is Test {
     }
 
     function testCheckAmountFundedByFunder() public {
-        (address _addr1, ) = fundMultipleAccounts();
+        address _addr1 = fundContract();
         uint256 previous_amount_funded_by_address = fundeth
             .checkAmountFundedByAddress(_addr1);
         vm.prank(_addr1);
@@ -82,7 +70,7 @@ contract FundEthTest is Test {
     }
 
     function testCheckFundersListUpdate() public {
-        (address _addr1, ) = fundMultipleAccounts();
+        address _addr1 = fundContract();
         assertEq(fundeth.checkFunderByIndex(0), _addr1);
     }
 
@@ -93,23 +81,23 @@ contract FundEthTest is Test {
     }
 
     function testWithdrawResetAddressFundedValue() public {
-        (address _addr1, ) = fundMultipleAccounts();
+        address _addr1 = fundContract();
         fundeth.withdraw();
         assertEq(fundeth.checkAmountFundedByAddress(_addr1), 0);
     }
 
     function testWithdrawDeleteFundersList() public {
-        fundMultipleAccounts();
+        fundContract();
         fundeth.withdraw();
         assertEq(fundeth.getNumberOfFunders(), 0);
     }
 
     function testOwnerBalance() public {
-        fundMultipleAccounts();
+        fundContract();
         vm.deal(address(this), 11 ether);
         uint256 initial_balance = address(this).balance;
         fundeth.withdraw();
-        assertEq(address(this).balance, initial_balance + 0.79 ether);
+        assertEq(address(this).balance, initial_balance + 0.61 ether);
     }
 
     function testReceive() public {
